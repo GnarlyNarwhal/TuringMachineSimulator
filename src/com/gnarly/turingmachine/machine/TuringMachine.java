@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import com.gnarly.turingmachine.machine.exceptions.compile.InvalidStateException;
 import com.gnarly.turingmachine.machine.exceptions.compile.InvalidSyntaxException;
 import com.gnarly.turingmachine.machine.exceptions.runtime.EndOfTapeException;
+import com.gnarly.turingmachine.machine.exceptions.runtime.InvalidStartIndexException;
 import com.gnarly.turingmachine.machine.exceptions.runtime.InvalidSymbolException;
 import com.gnarly.turingmachine.machine.exceptions.runtime.InvalidTapeLengthException;
 
@@ -43,12 +44,17 @@ public class TuringMachine {
 		while ((read = input.read()) != -1)
 			file.append((char) read);
 		input.close();
-		String contents = file.toString().replaceAll("\\r", "").replaceAll("\\/\\*(?:.|\\n)*\\*\\/", "").replaceAll("\\/\\/.*(?:\\n|$)", "").replaceFirst("\\s+", "");
+		String contents = file.toString().replaceAll("\\r", "").replaceAll("\\/\\*(?:.|\\n)*\\*\\/", "").replaceAll("\\/\\/.*(?:\\n|$)", "");
+		
+		if (!contents.startsWith("state"))
+			contents = contents.replaceFirst("\\s*", "");
 		
 		// Yes this exists now
 		// Excuse while I go gouge my eyes out
-		final String SYNTAX_REGEX = "\\s*(?:state\\s+\\w+\\s*\\{\\s*(?:symbol\\s+(?:(?:'(?:[^\\n\\r\\t]|\\\\[nt0])')|(?:0x[0-9a-fA-F]+)|(?:-?\\d+))\\s*\\{\\s*(?:\\w+|!HALT!)\\s*,\\s*(?:(?:'(?:[^\\n\\r\\t]|\\\\[nt0])')|(?:0x[0-9a-fA-F]+)|(?:-?\\d+))\\s*,\\s*(?:left|right|none)\\s*}\\s*)*}\\s*)*";
+		final String SYNTAX_REGEX = "\\s*(?:state\\s+\\w+\\s*\\{\\s*(?:symbol\\s+(?:(?:'(?:[^\\n\\r\\t]|\\\\[nt0])')|(?:0x[0-9a-fA-F]+)|(?:-?\\d+))\\s*\\{\\s*(?:(?:'(?:[^\\n\\r\\t]|\\\\[nt0])')|(?:0x[0-9a-fA-F]+)|(?:-?\\d+))\\s*,\\s*(?:left|right|none)\\s*,\\s*(?:\\w+|HALT!)\\s*}\\s*)*}\\s*)*";
 
+		System.out.println(contents);
+		
 		// Checks the contents of the file against the syntax regular expression to validate the files syntax
 		// Allows the parser to assume accurate syntax from here on out which means no error checking required. Yay!
 		if (!contents.matches(SYNTAX_REGEX))
@@ -60,12 +66,12 @@ public class TuringMachine {
 		// These are parser states. They indicate what the parser is currently looking for.
 		// Looking for the beginning of a new state or a new symbol for the current state
 		final int SOMETHING_NEW    = 0;
-		// Looking for the target state for the current symbol
-		final int TARGET_STATE     = 1;
 		// Looking for the target write symbol for the current symbol
-		final int TARGET_SYMBOL    = 2;
+		final int TARGET_SYMBOL    = 1;
 		// Looking for the target movement direction for the current symbol
-		final int TARGET_DIRECTION = 3;
+		final int TARGET_DIRECTION = 2;
+		// Looking for the target state for the current symbol
+		final int TARGET_STATE     = 3;
 		
 		// Start the parser off looking for a new state
 		int parserState = SOMETHING_NEW;
@@ -103,16 +109,8 @@ public class TuringMachine {
 						currentTransition = new IncompleteState.IncompleteTransition();
 						currentTransition.readValue = parseSymbol(split[i].replaceFirst("symbol\\s+", ""));
 						// Tell the parser to look for the target state
-						parserState = TARGET_STATE;
+						parserState = TARGET_SYMBOL;
 					}
-					break;
-				}
-				// If the parser is looking for the target state...
-				case TARGET_STATE: {
-					// Set the current transition's target state to the current token
-					currentTransition.targetState = split[i];
-					// Tell the parser to look for the target symbol
-					parserState = TARGET_SYMBOL;
 					break;
 				}
 				// If the parser is looking for the target symbol...
@@ -138,10 +136,19 @@ public class TuringMachine {
 							break;
 						}
 					}
-					// Since target direction is the last part of the transition add the newly completed transition to the list of complete transitions
-					transitions.add(currentTransition);
 					// Tell the parser to look for something new
+					parserState = TARGET_STATE;
+					break;
+				}
+				// If the parser is looking for the target state...
+				case TARGET_STATE: {
+					// Set the current transition's target state to the current token
+					currentTransition.targetState = split[i];
+					// Since target state is the last part of the transition add the newly completed transition to the list of complete transitions
+					transitions.add(currentTransition);
+					// Tell the parser to look for the target symbol
 					parserState = SOMETHING_NEW;
+					break;
 				}
 			}
 		}
@@ -171,8 +178,8 @@ public class TuringMachine {
 				currentCompleteTransition.movement   = currentIncompleteTransition.movement;
 				// Get the current incomplete transitions target state name
 				String currentTargetState = currentIncompleteTransition.targetState;
-				// If it is the string literal !HALT! then its valid
-				if (currentTargetState.equals("!HALT!"))
+				// If it is the string literal HALT! then its valid
+				if (currentTargetState.equals("HALT!"))
 					currentCompleteTransition.targetState = HALT;
 				// Otherwise look for it in the list of states
 				else {
@@ -225,19 +232,13 @@ public class TuringMachine {
 		return 0;
 	}
 
-	public int[] run(int[] input) throws InvalidSymbolException, EndOfTapeException {
-		// Run the machine with tape length equal to the input length
-		try { return run(input, input.length); }
-		catch (InvalidTapeLengthException e) {
-			// This is beyond science (it's impossible)
-			return null;
-		}
-	}
-
-	public int[] run(int[] input, int tapeLength) throws InvalidSymbolException, InvalidTapeLengthException, EndOfTapeException {
+	public int[] run(int[] input, int writeIndex, int tapeLength, int startIndex) throws InvalidSymbolException, InvalidTapeLengthException, EndOfTapeException, InvalidStartIndexException {
 		// Check that the tape length is atleast as long as the input
-		if(tapeLength < input.length)
-			throw new InvalidTapeLengthException(tapeLength, input.length);
+		if (tapeLength < writeIndex + input.length)
+			throw new InvalidTapeLengthException(tapeLength, writeIndex, input.length);
+		// Check that the start index is valid
+		if (startIndex < 0 || startIndex >= tapeLength)
+			throw new InvalidStartIndexException(startIndex, tapeLength);
 		// Allocate an array for the tape and initialize it to the input
 		int[] tape = new int[tapeLength];
 		for (int i = 0; i < input.length; ++i)
@@ -255,8 +256,8 @@ public class TuringMachine {
 				// If it finds a match, set the state, write to the tape, move the read head, and exit the loop
 				if (transition.readValue == tape[readHead]) {
 					tape[readHead] = transition.writeValue;
-					currentState   = transition.targetState;
 					readHead	  += transition.movement;
+					currentState   = transition.targetState;
 					break;
 				}
 				// If the current tape symbol does not match any of the read symbols in the current state throw an error
@@ -270,19 +271,13 @@ public class TuringMachine {
 		return tape;
 	}
 
-	public String run(String input) throws InvalidSymbolException, EndOfTapeException {
-		// Run the machine with tape length equal to the input length
-		try { return run(input, input.length()); }
-		catch (InvalidTapeLengthException e) {
-			// This is beyond science (it's impossible)
-			return null;
-		}
-	}
-
-	public String run(String input, int tapeLength) throws InvalidSymbolException, InvalidTapeLengthException, EndOfTapeException {
+	public String run(String input, int writeIndex, int tapeLength, int startIndex) throws InvalidSymbolException, InvalidTapeLengthException, EndOfTapeException, InvalidStartIndexException {
 		// Check that the tape length is atleast as long as the input
-		if(tapeLength < input.length())
-			throw new InvalidTapeLengthException(tapeLength, input.length());
+		if (tapeLength < writeIndex + input.length())
+			throw new InvalidTapeLengthException(tapeLength, writeIndex, input.length());
+		// Check that the start index is valid
+		if (startIndex < 0 || startIndex >= tapeLength)
+			throw new InvalidStartIndexException(startIndex, tapeLength);
 		// Allocate an array for the tape and initialize it to the input
 		char[] tape = new char[tapeLength];
 		for (int i = 0; i < input.length(); ++i)
