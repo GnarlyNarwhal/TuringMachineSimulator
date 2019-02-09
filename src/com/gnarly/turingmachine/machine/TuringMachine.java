@@ -52,8 +52,6 @@ public class TuringMachine {
 		// Yes this exists now
 		// Excuse while I go gouge my eyes out
 		final String SYNTAX_REGEX = "\\s*(?:state\\s+\\w+\\s*\\{\\s*(?:symbol\\s+(?:(?:'(?:[^\\n\\r\\t]|\\\\[nt0])')|(?:0x[0-9a-fA-F]+)|(?:-?\\d+))\\s*\\{\\s*(?:(?:'(?:[^\\n\\r\\t]|\\\\[nt0])')|(?:0x[0-9a-fA-F]+)|(?:-?\\d+))\\s*,\\s*(?:left|right|none)\\s*,\\s*(?:\\w+|HALT!)\\s*}\\s*)*}\\s*)*";
-
-		System.out.println(contents);
 		
 		// Checks the contents of the file against the syntax regular expression to validate the files syntax
 		// Allows the parser to assume accurate syntax from here on out which means no error checking required. Yay!
