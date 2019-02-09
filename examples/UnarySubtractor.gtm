@@ -1,0 +1,21 @@
+state SearchingSubtrahend {
+	symbol '1' { SearchingSubtrahend,    '1', right }
+	symbol '-' { SearchingSubtrahend,    '-', right }
+	symbol ' ' { SearchingSubtrahend,    ' ', right }
+	symbol '=' { DecrementingSubtrahend, ' ', left  }
+}
+
+state DecrementingSubtrahend {
+	symbol '1' { SearchingMinuend, '=', left }
+	symbol '-' { !HALT!,           ' ', none }
+}
+
+state SearchingMinuend {
+	symbol '1' { SearchingMinuend,    '1', left }
+	symbol '-' { DecrementingMinuend, '-', left }
+}
+
+state DecrementingMinuend {
+	symbol ' ' { DecrementingMinuend, ' ', left  }
+	symbol '1' { SearchingSubtrahend, ' ', right }
+}

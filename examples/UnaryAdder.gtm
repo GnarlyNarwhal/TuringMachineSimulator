@@ -1,0 +1,17 @@
+// Merge the two numbers by converting the + between them to a 1
+state MergingAddends {
+	symbol '1' { MergingAddends,           '1', right }
+	symbol '+' { SearchingSecondaryAddend, '1', right }
+}
+
+// Find the end of the secondary addend by finding the =
+state SearchingSecondaryAddend {
+	symbol '1' { SearchingSecondaryAddend, '1', right }
+	symbol '=' { DecrementSecondaryAddend, ' ', left  }
+}
+
+// Convert the last 1 to a space to compensate for the 1
+// that was added by converting the + to a 1
+state DecrementSecondaryAddend {
+	symbol '1' { !HALT!, ' ', none }
+}
