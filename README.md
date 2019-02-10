@@ -4,9 +4,11 @@
 
 Allows the generation of and testing of Turing machines. 
 
-## Planned features...maybe
+## Feature List
 
-- A CLI
+- [Turing machine generation](https://github.com/GnarlyNarwhal/TuringMachineSimulator#defining-turing-machines)
+- [A CLI](https://github.com/GnarlyNarwhal/TuringMachineSimulator#command-line-interface)
+#### Potential features...probably not
 - A debug mode for running the Turing machines. (NOT for debugging the generation
 of the machines. Sorry but I'm not touching that parser code ever again.)
 
@@ -50,7 +52,7 @@ components of the 7-tuple in simpler terms. The seven components are listed belo
 
 ### Example
 
-Imagine we have a turing machine as shown below. The head currently points to a cell
+Imagine we have a Turing machine as shown below. The head currently points to a cell
 with the symbol `c` and the current state is S1 where S1 is defined by the 5-tuple `(S1, 'c', '&', right, S2)`.
 ```
    ---------------------------
@@ -98,18 +100,33 @@ which we would have defined if this were a real machine.
 Just as a final note, take everything here with a grain of salt. I would be entirely
 unsurprised if someone who knew what they were talking about took issue with what I
 have said. However I think this is a good enough explanation to give people some
-idea of what a turing machine is. If you want a more informed explanation of a
+idea of what a Turing machine is. If you want a more informed explanation of a
 Turing machine or want to understand the significance of them in terms of computational
 theory then there are plenty of resources out there which do a much better job than
 I could hope to do. If you don't know where to start consider reading the
 [wikipedia page](https://en.wikipedia.org/wiki/Turing_machine).
+
+## Command Line Interface
+
+This program offers a simplisitic and clunky command line interface to run your Turing machines.
+The CLI has 5 commands at the moment. The first is `help` which lists the commands and provides a
+brief description of each command. The second command is `quit` which simply quits the program.
+The final three commands are related to actually running your Turing machines. To start there is
+the `load` command which loads a Turing machine from a `.gtm` file. The command takes one parameter
+which is the path to the file. The next step is the `set` command. This command prompts you for four
+variables: the input string, the index to start writing the index string at, the length of the tape,
+and the starting index of the head. This command does not need to be called before every run. Only
+when you want to change one of those parameters. Also you can't edit just one you have to set
+every one every time the command is called. The final command is the `execute` command. This just
+executes the currently loaded Turing machine with the current parameters set by the `set` command.
+Once the machine halts the tape is printed to the screen.
 
 ## Defining Turing Machines
 
 The definition of a Turing machine in a `.gtm` file is strictly a sequence of state and
 transition function definitions. Here is how the 7 components for the Turing machine are determined from the `.gtm` file.
 - The set of acceptable states is the set of all states defined in the file and the implicitly defined `HALT!` state
-- The alphabet for these turing machines is always defined to be `Integer.MIN_VALUE` to `Integer.MAX_VALUE`.
+- The alphabet for these Turing machines is always defined to be `Integer.MIN_VALUE` to `Integer.MAX_VALUE`.
 However if no transition function, for the current symbol being read during the current state of the machine, is defined the machine will
 emit an error and terminate effectively limiting the alphabet to those set of characters for which a transition
 state is defined.
